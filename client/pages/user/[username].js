@@ -26,6 +26,7 @@ import LocaleContext from "../../utils/LocaleContext";
 
 const User = ({ token, user, userRole }) => {
   const [banned, setBanned] = useState(!!user.banned);
+  const [role, setRole] = useState(user.role);
   const [showBanModal, setShowBanModal] = useState(false);
 
   const { addNotification } = useContext(NotificationContext);
@@ -38,8 +39,8 @@ const User = ({ token, user, userRole }) => {
       SQ_TORRENT_CATEGORIES,
       SQ_MINIMUM_RATIO,
       SQ_MAXIMUM_HIT_N_RUNS,
-      SQ_API_URL,
-    },
+      SQ_API_URL
+    }
   } = getConfig();
 
   const downloadedBytes = prettyBytes(user.downloaded?.bytes || 0).split(" ");
@@ -56,8 +57,8 @@ const User = ({ token, user, userRole }) => {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
-          },
+            Authorization: `Bearer ${token}`
+          }
         }
       );
 
@@ -90,6 +91,53 @@ const User = ({ token, user, userRole }) => {
     setLoading(false);
   };
 
+  const handlePromoteUser = async () => {
+    setLoading(true);
+
+    try {
+      const res = await fetch(
+        `${SQ_API_URL}/user/${role === "user" ? "promote" : "demote"}/${
+          user.username
+        }`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      );
+
+      if (res.status !== 200) {
+        const reason = await res.text();
+        throw new Error(reason);
+      }
+
+      addNotification(
+        "success",
+        `${user.username} ${
+          role !== "user"
+            ? [getLocaleString("userDemoted")]
+            : [getLocaleString("userPromoted")]
+        } ${getLocaleString("userSuccessfully")}`
+      );
+
+      setRole((r) => (r === "user" ? "admin" : "user"));
+      // setShowBanModal(false);
+    } catch (e) {
+      addNotification(
+        "error",
+        `${getLocaleString("userCouldNot")} ${
+          role !== "user"
+            ? [getLocaleString("userDemoted")]
+            : [getLocaleString("userPromoted")]
+        } ${user.username}: ${e.message}`
+      );
+      console.error(e);
+    }
+
+    setLoading(false);
+  };
+
   const cards = useMemo(() => {
     let c = 2;
     if (SQ_MINIMUM_RATIO !== -1) c++;
@@ -110,7 +158,7 @@ const User = ({ token, user, userRole }) => {
           <Text as="h1">
             {user.username} {getLocaleString("userProfile")}
           </Text>
-          {user.role === "admin" && (
+          {role === "admin" && (
             <Text icon={UserCircle} iconColor="primary" ml={3}>
               {getLocaleString("userAdmin")}
             </Text>
@@ -121,21 +169,31 @@ const User = ({ token, user, userRole }) => {
             </Text>
           )}
         </Box>
-        {cookies.username === user.username && (
-          <Link href="/account">
-            <a>
-              <Button>{getLocaleString("accMyAccount")}</Button>
-            </a>
-          </Link>
-        )}
-        {userRole === "admin" && cookies.username !== user.username && (
-          <Button onClick={() => setShowBanModal(true)}>
-            {banned
-              ? [getLocaleString("userUnban")]
-              : [getLocaleString("userBan")]}{" "}
-            {user.username}
-          </Button>
-        )}
+        <Box display="flex" alignItems="center" ml={3}>
+          {cookies.username === user.username && (
+            <Link href="/account">
+              <a>
+                <Button>{getLocaleString("accMyAccount")}</Button>
+              </a>
+            </Link>
+          )}
+          {userRole === "admin" && cookies.username !== user.username && (
+            <Button onClick={() => handlePromoteUser()} mr={3}>
+              {role === "admin"
+                ? [getLocaleString("userDemote")]
+                : [getLocaleString("userPromote")]}{" "}
+              {user.username}
+            </Button>
+          )}
+          {userRole === "admin" && cookies.username !== user.username && (
+            <Button onClick={() => setShowBanModal(true)}>
+              {banned
+                ? [getLocaleString("userUnban")]
+                : [getLocaleString("userBan")]}{" "}
+              {user.username}
+            </Button>
+          )}
+        </Box>
       </Box>
       <Text color="grey" mb={5}>
         {getLocaleString("userUserSince")}{" "}
@@ -351,14 +409,14 @@ export const getServerSideProps = withAuthServerSideProps(
 
     const {
       publicRuntimeConfig: { SQ_API_URL },
-      serverRuntimeConfig: { SQ_JWT_SECRET },
+      serverRuntimeConfig: { SQ_JWT_SECRET }
     } = getConfig();
 
     const { role } = jwt.verify(token, SQ_JWT_SECRET);
 
     try {
       const userRes = await fetch(`${SQ_API_URL}/user/${username}`, {
-        headers: fetchHeaders,
+        headers: fetchHeaders
       });
 
       if (

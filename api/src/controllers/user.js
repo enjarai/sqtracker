@@ -803,6 +803,30 @@ export const banUser = async (req, res, next) => {
   }
 };
 
+export const promoteUser = async (req, res, next) => {
+  try {
+    if (req.userRole !== "admin") {
+      res.status(401).send("You do not have permission to promote a user");
+      return;
+    }
+
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      res.status(404).send("User does not exist");
+      return;
+    }
+
+    await User.findOneAndUpdate(
+      { username: req.params.username },
+      { $set: { role: "admin" } }
+    );
+
+    res.sendStatus(200);
+  } catch (e) {
+    next(e);
+  }
+};
+
 export const buyItems = async (req, res, next) => {
   if (req.body.type && req.body.amount) {
     try {
@@ -876,6 +900,23 @@ export const buyItems = async (req, res, next) => {
         await progressRecord.save();
 
         res.status(200).send((user.bonusPoints - cost).toString());
+      } else if (req.body.type === "headpat") {
+        const cost = amount;
+        if (cost > user.bonusPoints) {
+          res.status(403).send("Not enough points for transaction");
+          return;
+        }
+
+        await User.findOneAndUpdate(
+          { _id: req.userId },
+          {
+            $inc: {
+              bonusPoints: cost * -1,
+            },
+          }
+        );
+
+        res.status(200).send((user.bonusPoints - cost).toString());
       } else {
         res.status(400).send("Type must be one of invite, upload");
         return;
@@ -904,6 +945,35 @@ export const unbanUser = async (req, res, next) => {
     await User.findOneAndUpdate(
       { username: req.params.username },
       { $set: { banned: false } }
+    );
+
+    res.sendStatus(200);
+  } catch (e) {
+    next(e);
+  }
+};
+
+export const demoteUser = async (req, res, next) => {
+  try {
+    if (req.userRole !== "admin" || req.params.username === "admin") {
+      res.status(401).send("You do not have permission to demote a user");
+      return;
+    }
+
+    const user = await User.findOne({ username: req.params.username });
+    if (!user) {
+      res.status(404).send("User does not exist");
+      return;
+    }
+
+    if (req.userId === user.id) {
+      res.status(401).send("You cannot demote yourself");
+      return;
+    }
+
+    await User.findOneAndUpdate(
+      { username: req.params.username },
+      { $set: { role: "user" } }
     );
 
     res.sendStatus(200);

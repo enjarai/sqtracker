@@ -228,7 +228,9 @@ const Account = ({ token, invites = [], user, userRole }) => {
 
       addNotification(
         "success",
-        `${getLocaleString("accItemsPurchasedSuccess")}`
+        type === "headpat"
+          ? `${getLocaleString("getPet")}`
+          : `${getLocaleString("accItemsPurchasedSuccess")}`
       );
 
       const pointsRemaining = await buyRes.text();
@@ -406,6 +408,12 @@ const Account = ({ token, invites = [], user, userRole }) => {
           cost={SQ_BP_COST_PER_GB}
           wallet={bonusPoints}
           handleBuy={(e) => handleBuy(e, "upload")}
+        />
+        <BuyItem
+          text={getLocaleString("accPurchaseHeadpat")}
+          cost={1}
+          wallet={bonusPoints}
+          handleBuy={(e) => handleBuy(e, "headpat")}
         />
       </Box>
       {(SQ_ALLOW_REGISTER === "invite" || userRole === "admin") && (
