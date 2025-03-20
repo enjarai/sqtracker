@@ -25,6 +25,9 @@ const auth = async (req, res, next) => {
     } catch (err) {
       res.status(500).send(err);
     }
+  // } else if (req.headers.username && req.headers.password) {
+  //   const user = await User.findOne({ username: req.headers.username }).lean();
+  //
   } else if (
     req.headers["x-sq-public-access"] === "true" &&
     req.headers["x-sq-server-secret"] === process.env.SQ_SERVER_SECRET

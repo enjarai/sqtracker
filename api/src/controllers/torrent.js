@@ -509,6 +509,7 @@ export const getTorrentsPage = async ({
         freeleech: 1,
         tags: 1,
         confidenceScore: 1,
+        size: 1,
       },
     },
     ...(Array.isArray(ids)
